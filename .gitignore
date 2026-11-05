@@ -106,3 +106,6 @@ jdk17/
 jdk17dl.zip
 *.jks
 *.keystore
+
+# 打包产物
+outputs/

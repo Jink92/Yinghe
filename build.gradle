@@ -43,3 +43,35 @@ allprojects {
 task clean(type: Delete) {
     delete rootProject.buildDir
 }
+
+// 打包后把 TV 版和手机版 APK 复制到 outputs/ 目录
+task copyApks {
+    doLast {
+        def outputsDir = file("$rootDir/outputs")
+        outputsDir.mkdirs()
+        def timestamp = new Date().format("yyyyMMdd_HHmmss")
+
+        def tvApk = file("$rootDir/app/build/outputs/apk/java/debug/Yinghe_tv.apk")
+        if (tvApk.exists()) {
+            def target = file("$outputsDir/Yinghe_TV_${timestamp}.apk")
+            target.parentFile.mkdirs()
+            target.bytes = tvApk.bytes
+            // 同时保存一份不带时间戳的最新版
+            file("$outputsDir/Yinghe_TV_latest.apk").bytes = tvApk.bytes
+            println "✅ TV 版 → ${target.name}"
+        } else {
+            println "⚠️  TV 版 APK 不存在，先跑 :app:assembleJavaDebug"
+        }
+
+        def mobileApk = file("$rootDir/app_mobile/build/outputs/apk/debug/Yinghe_mobile.apk")
+        if (mobileApk.exists()) {
+            def target = file("$outputsDir/Yinghe_Mobile_${timestamp}.apk")
+            target.parentFile.mkdirs()
+            target.bytes = mobileApk.bytes
+            file("$outputsDir/Yinghe_Mobile_latest.apk").bytes = mobileApk.bytes
+            println "✅ 手机版 → ${target.name}"
+        } else {
+            println "⚠️  手机版 APK 不存在，先跑 :app_mobile:assembleDebug"
+        }
+    }
+}
