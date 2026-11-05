@@ -51,40 +51,46 @@ task copyApks {
         outputsDir.mkdirs()
         def timestamp = new Date().format("yyyyMMdd_HHmmss")
 
-        // 清理函数:匹配 prefix_*.apk,按文件名排序保留最新 keep 个
-        def cleanup = { String prefix, int keep ->
-            def all = outputsDir.listFiles()?.findAll { f -> f.name ==~ /${prefix}_\d{8}_\d{6}\.apk/ } ?: []
+        // TV 版: 优先 release, 否则 debug
+        def tvRelease = file("$rootDir/app/build/outputs/apk/java/release/Yinghe_tv.apk")
+        def tvDebug = file("$rootDir/app/build/outputs/apk/java/debug/Yinghe_tv.apk")
+        def tvApk = tvRelease.exists() ? tvRelease : tvDebug
+        if (tvApk.exists()) {
+            def flavor = tvRelease.exists() ? "Release" : "Debug"
+            def target = file("$outputsDir/Yinghe_TV_${flavor}_${timestamp}.apk")
+            target.parentFile.mkdirs()
+            target.bytes = tvApk.bytes
+            file("$outputsDir/Yinghe_TV_latest.apk").bytes = tvApk.bytes
+            println "✅ TV ${flavor} → ${target.name}"
+        } else {
+            println "⚠️  TV 版 APK 不存在"
+        }
+
+        // 手机版: 优先 release, 否则 debug
+        def mobileRelease = file("$rootDir/app_mobile/build/outputs/apk/release/Yinghe_mobile.apk")
+        def mobileDebug = file("$rootDir/app_mobile/build/outputs/apk/debug/Yinghe_mobile.apk")
+        def mobileApk = mobileRelease.exists() ? mobileRelease : mobileDebug
+        if (mobileApk.exists()) {
+            def flavor = mobileRelease.exists() ? "Release" : "Debug"
+            def target = file("$outputsDir/Yinghe_Mobile_${flavor}_${timestamp}.apk")
+            target.parentFile.mkdirs()
+            target.bytes = mobileApk.bytes
+            file("$outputsDir/Yinghe_Mobile_latest.apk").bytes = mobileApk.bytes
+            println "✅ 手机版 ${flavor} → ${target.name}"
+        } else {
+            println "⚠️  手机版 APK 不存在"
+        }
+
+        // 每种版本只保留最近 2 个历史包 (匹配带 Release_/Debug_ 或不带 flavor 前缀的)
+        def cleanupAll = { String prefix ->
+            def all = outputsDir.listFiles()?.findAll { f -> f.name ==~ /${prefix}_(Release|Debug)?_?\d{8}_\d{6}\.apk/ } ?: []
             all.sort { a, b -> b.name <=> a.name }
-            all.drop(keep).each { f ->
+            all.drop(2).each { f ->
                 f.delete()
                 println "🗑️  删除旧包 ${f.name}"
             }
         }
-
-        def tvApk = file("$rootDir/app/build/outputs/apk/java/debug/Yinghe_tv.apk")
-        if (tvApk.exists()) {
-            def target = file("$outputsDir/Yinghe_TV_${timestamp}.apk")
-            target.parentFile.mkdirs()
-            target.bytes = tvApk.bytes
-            file("$outputsDir/Yinghe_TV_latest.apk").bytes = tvApk.bytes
-            println "✅ TV 版 → ${target.name}"
-        } else {
-            println "⚠️  TV 版 APK 不存在，先跑 :app:assembleJavaDebug"
-        }
-
-        def mobileApk = file("$rootDir/app_mobile/build/outputs/apk/debug/Yinghe_mobile.apk")
-        if (mobileApk.exists()) {
-            def target = file("$outputsDir/Yinghe_Mobile_${timestamp}.apk")
-            target.parentFile.mkdirs()
-            target.bytes = mobileApk.bytes
-            file("$outputsDir/Yinghe_Mobile_latest.apk").bytes = mobileApk.bytes
-            println "✅ 手机版 → ${target.name}"
-        } else {
-            println "⚠️  手机版 APK 不存在，先跑 :app_mobile:assembleDebug"
-        }
-
-        // 每种版本只保留最近 2 个历史包
-        cleanup("Yinghe_TV", 2)
-        cleanup("Yinghe_Mobile", 2)
+        cleanupAll("Yinghe_TV")
+        cleanupAll("Yinghe_Mobile")
     }
 }
