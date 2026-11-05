@@ -84,6 +84,13 @@ android {
         buildConfig true
     }
 
+    sourceSets {
+        main {
+            res.srcDirs += '../common_res/res'
+            assets.srcDirs += '../common_assets/assets'
+        }
+    }
+
     packagingOptions {//引入dlna-cast时的文件冲突
         exclude 'META-INF/beans.xml'
     }

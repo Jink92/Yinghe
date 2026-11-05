@@ -80,6 +80,10 @@ android {
     }
 
     sourceSets {
+        main {
+            res.srcDirs += '../common_res/res'
+            assets.srcDirs += '../common_assets/assets'
+        }
         java {
             java.srcDirs += 'src/normal/java'
         }
