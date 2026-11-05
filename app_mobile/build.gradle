@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 apply plugin: 'org.jetbrains.kotlin.android'
 
 android {
+    namespace 'com.github.tvbox.osc'
     compileSdkVersion 33
 
     defaultConfig {
@@ -64,6 +65,10 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
     lintOptions {
         checkReleaseBuilds false
         abortOnError false
@@ -76,6 +81,7 @@ android {
     }
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 
     packagingOptions {//引入dlna-cast时的文件冲突
