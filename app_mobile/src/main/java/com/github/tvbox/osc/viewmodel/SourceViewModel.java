@@ -77,12 +77,20 @@ public class SourceViewModel extends ViewModel {
 
     // homeContent
     public void getSort(String sourceKey) {
+        android.util.Log.e("SrcVM", "getSort sourceKey=" + sourceKey);
         if (sourceKey == null) {
+            android.util.Log.e("SrcVM", "getSort sourceKey==null → postValue(null)");
             sortResult.postValue(null);
             return;
         }
         SourceBean sourceBean = ApiConfig.get().getSource(sourceKey);
+        if (sourceBean == null) {
+            android.util.Log.e("SrcVM", "getSort sourceBean==null for key=" + sourceKey + " → postValue(null)");
+            sortResult.postValue(null);
+            return;
+        }
         int type = sourceBean.getType();
+        android.util.Log.e("SrcVM", "getSort type=" + type);
         if (type == 3) {
             Runnable waitResponse = new Runnable() {
                 @Override

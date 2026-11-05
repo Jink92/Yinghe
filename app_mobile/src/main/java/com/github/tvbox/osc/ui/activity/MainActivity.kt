@@ -24,17 +24,11 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
     private var exitTime = 0L
 
     override fun init() {
-
         useCacheConfig = intent.extras?.getBoolean(IntentKey.CACHE_CONFIG_CHANGED, false)?:false
 
         mBinding.vp.adapter = object : FragmentPagerAdapter(supportFragmentManager) {
-            override fun getItem(position: Int): Fragment {
-                return fragments[position]
-            }
-
-            override fun getCount(): Int {
-                return fragments.size
-            }
+            override fun getItem(position: Int): Fragment = fragments[position]
+            override fun getCount(): Int = fragments.size
         }
 
         mBinding.bottomNav.setOnNavigationItemSelectedListener { menuItem: MenuItem ->
@@ -64,6 +58,13 @@ class MainActivity : BaseVbActivity<ActivityMainBinding>() {
 
         // 启动自动检测更新(静默模式:无更新/失败不提示)
         UpdateUtil.checkUpdate(this, true)
+
+        // 默认选中首页,用 post 确保 ViewPager 已完成首次 layout
+        mBinding.root.post {
+            mBinding.vp.offscreenPageLimit = 1
+            mBinding.vp.currentItem = 0
+            mBinding.bottomNav.selectedItemId = R.id.navigation_home
+        }
     }
 
     override fun onBackPressed() {

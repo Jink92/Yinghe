@@ -138,28 +138,23 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
 
         showLoading()
         when{
-            dataInitOk && jarInitOk -> {
-                //正常初始化会先加载,最终到这,此时数据有以下几种情况
-                // 1. api/jar/spider等均加载完,正常显示数据。2. 缺失spider(存疑?)/api配置有问题同样加载(最后空布局 或 只有豆瓣首页)
-                sourceViewModel?.getSort(ApiConfig.get().homeSourceBean.key)
-            }
-            dataInitOk && !jarInitOk -> {
-                loadJar()
-            }
-            else -> {
-                loadConfig()
-            }
+            dataInitOk && jarInitOk -> sourceViewModel?.getSort(ApiConfig.get().homeSourceBean.key)
+            dataInitOk && !jarInitOk -> loadJar()
+            else -> loadConfig()
         }
     }
 
     private fun loadConfig(){
+        android.util.Log.e("HomeFrag", "loadConfig start onlyConfigChanged=$onlyConfigChanged")
         ApiConfig.get().loadConfig(onlyConfigChanged, object : LoadConfigCallback {
 
             override fun retry() {
+                android.util.Log.e("HomeFrag", "loadConfig retry")
                 mHandler.post { initData() }
             }
 
             override fun success() {
+                android.util.Log.e("HomeFrag", "loadConfig success spider=${ApiConfig.get().spider}")
                 dataInitOk = true
                 if (ApiConfig.get().spider.isEmpty()) {
                     jarInitOk = true
@@ -168,6 +163,7 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
             }
 
             override fun error(msg: String) {
+                android.util.Log.e("HomeFrag", "loadConfig error msg=$msg")
                 if (msg.equals("-1", ignoreCase = true)) {
                     mHandler.post {
                         dataInitOk = true
@@ -182,28 +178,40 @@ class HomeFragment : BaseVbFragment<FragmentHomeBinding>() {
     }
 
     private fun loadJar(){
+        // 10秒超时强制兜底,防止 loadJar 回调永久不返回导致卡加载
+        var timedOut = false
+        val timeoutRunnable = Runnable {
+            if (!jarInitOk) {
+                timedOut = true
+                jarInitOk = true
+                initData()
+            }
+        }
+        mHandler.postDelayed(timeoutRunnable, 10000)
+
         if (!ApiConfig.get().spider.isNullOrEmpty()) {
             ApiConfig.get().loadJar(
                 onlyConfigChanged,
                 ApiConfig.get().spider,
                 object : LoadConfigCallback {
                     override fun success() {
+                        mHandler.removeCallbacks(timeoutRunnable)
+                        if (timedOut) return
                         jarInitOk = true
-                        mHandler.postDelayed({
-                            if (!onlyConfigChanged) {
-                                queryHistory()
-                            }
-                            initData()
-                        }, 50)
+                        // 直接调 initData,不用 postDelayed,避免 Fragment 在 ViewPager 中 attach 状态下 handler 消息不执行
+                        if (!onlyConfigChanged) {
+                            queryHistory()
+                        }
+                        initData()
                     }
 
                     override fun retry() {}
                     override fun error(msg: String) {
+                        mHandler.removeCallbacks(timeoutRunnable)
+                        if (timedOut) return
                         jarInitOk = true
-                        mHandler.post {
-                            ToastUtils.showShort("更新订阅失败")
-                            initData()
-                        }
+                        ToastUtils.showShort("更新订阅失败")
+                        initData()
                     }
                 })
         }
