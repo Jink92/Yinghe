@@ -44,19 +44,28 @@ task clean(type: Delete) {
     delete rootProject.buildDir
 }
 
-// 打包后把 TV 版和手机版 APK 复制到 outputs/ 目录
+// 打包后把 TV 版和手机版 APK 复制到 outputs/ 目录,每种版本只保留最近 2 个历史包
 task copyApks {
     doLast {
         def outputsDir = file("$rootDir/outputs")
         outputsDir.mkdirs()
         def timestamp = new Date().format("yyyyMMdd_HHmmss")
 
+        // 清理函数:匹配 prefix_*.apk,按文件名排序保留最新 keep 个
+        def cleanup = { String prefix, int keep ->
+            def all = outputsDir.listFiles()?.findAll { f -> f.name ==~ /${prefix}_\d{8}_\d{6}\.apk/ } ?: []
+            all.sort { a, b -> b.name <=> a.name }
+            all.drop(keep).each { f ->
+                f.delete()
+                println "🗑️  删除旧包 ${f.name}"
+            }
+        }
+
         def tvApk = file("$rootDir/app/build/outputs/apk/java/debug/Yinghe_tv.apk")
         if (tvApk.exists()) {
             def target = file("$outputsDir/Yinghe_TV_${timestamp}.apk")
             target.parentFile.mkdirs()
             target.bytes = tvApk.bytes
-            // 同时保存一份不带时间戳的最新版
             file("$outputsDir/Yinghe_TV_latest.apk").bytes = tvApk.bytes
             println "✅ TV 版 → ${target.name}"
         } else {
@@ -73,5 +82,9 @@ task copyApks {
         } else {
             println "⚠️  手机版 APK 不存在，先跑 :app_mobile:assembleDebug"
         }
+
+        // 每种版本只保留最近 2 个历史包
+        cleanup("Yinghe_TV", 2)
+        cleanup("Yinghe_Mobile", 2)
     }
 }
